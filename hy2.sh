@@ -2,8 +2,9 @@
 cd "$(dirname "$0")" || exit 1
 
 : "${UUID:?UUID is required}"
+
 HPORT="${SERVER_PORT:-${PORT:-8080}}"
-HOST="${DOMAIN:-fi14.bot-hosting.cloud}"
+HOST="${HY2_HOST:-fi14.bot-hosting.cloud}"
 SB_VER="1.12.0"
 
 mkdir -p bin
@@ -18,10 +19,18 @@ if ! ./bin/sing-box version >/dev/null 2>&1; then
   ./bin/sing-box version >/dev/null 2>&1 || { echo "[hy2] sing-box binary not working"; exit 1; }
 fi
 
-if [ ! -f bin/hy2.crt ]; then
-  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
-    -keyout bin/hy2.key -out bin/hy2.crt -days 3650 -subj "/CN=www.bing.com" >/dev/null 2>&1
+if [ ! -s bin/hy2.crt ] || [ ! -s bin/hy2.key ]; then
+  rm -f bin/hy2.crt bin/hy2.key
+  if command -v openssl >/dev/null 2>&1; then
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+      -keyout bin/hy2.key -out bin/hy2.crt -days 3650 -subj "/CN=www.bing.com" >/dev/null 2>&1
+  else
+    ./bin/sing-box generate tls-keypair www.bing.com -m 120 > bin/kp.txt 2>/dev/null
+    awk '/BEGIN CERTIFICATE/{c=1} c{print > "bin/hy2.crt"; next} {print > "bin/hy2.key"}' bin/kp.txt
+    rm -f bin/kp.txt
+  fi
 fi
+[ -s bin/hy2.crt ] && [ -s bin/hy2.key ] || { echo "[hy2] cert generation failed"; exit 1; }
 
 cat > ./hy2.json <<EOF
 {
