@@ -1,0 +1,43 @@
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT} {
+	handle /health {
+		respond "ok" 200
+	}
+
+	handle {$SUB_PATH} {
+		respond "{$SUB_B64}" 200
+	}
+
+	handle {$WS_PATH}v* {
+		reverse_proxy 127.0.0.1:10001 {
+			flush_interval -1
+		}
+	}
+
+	handle {$WS_PATH}m* {
+		reverse_proxy 127.0.0.1:10002 {
+			flush_interval -1
+		}
+	}
+
+	handle {$WS_PATH}t* {
+		reverse_proxy 127.0.0.1:10003 {
+			flush_interval -1
+		}
+	}
+
+	handle {$XH_PATH}* {
+		reverse_proxy h2c://127.0.0.1:10004 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		header Content-Type "text/html; charset=utf-8"
+		respond `<!doctype html><meta charset=utf-8><title>Clicker</title><body style="font-family:sans-serif;text-align:center;margin-top:20vh"><h1>Click Game</h1><h2 id=s>0</h2><button onclick="s.textContent=++n" style="font-size:2em">Click!</button><script>var n=0</script></body>` 200
+	}
+}
